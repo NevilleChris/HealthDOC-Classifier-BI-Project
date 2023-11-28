@@ -1,0 +1,199 @@
+---
+title: "Symptom Diagnosis"
+author: "Nelson Kaguamere"
+date: "2023-11-27"
+output: md_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+LOADING DATASET
+```{r }
+library(readr)
+dataset <- read_csv("D:/Kaguash/Downloads/Symptom-Disease-ClassifierBI-Project/data/communicable_dataset.csv")
+View(dataset)
+
+```
+
+Issue 2
+```{r }
+# Measure of Frequency
+disease_frequencies <- table(dataset$Disease)
+
+# Measure of Central Tendency
+mean_disease_length <- mean(nchar(dataset$Disease))
+median_disease_length <- median(nchar(dataset$Disease))
+mode_disease <- names(which.max(disease_frequencies))
+
+# Measure of Distribution
+sd_disease_length <- sd(nchar(dataset$Disease))
+
+# Measure of Relationship
+#disease_association <- chisq.test(dataset$Disease)
+
+# Print results
+print(disease_frequencies)
+print(mean_disease_length)
+print(median_disease_length)
+print(mode_disease)
+print(sd_disease_length)
+#print(disease_association)
+head(dataset)
+
+# Check unique levels in Disease and Symptom_1
+table(dataset$Disease)
+table(dataset$Symptom_1)
+
+# Perform chi-square test of independence
+chisq_result <- chisq.test(dataset$Disease, dataset$Symptom_1)
+print(chisq_result)
+
+```
+Issue 3
+
+```{r }
+# Load your dataset (replace 'your_data.csv' with your actual data file)
+data <- read_csv("D:/Kaguash/Downloads/Symptom-Disease-ClassifierBI-Project/data/communicable_dataset.csv")
+
+# Convert character data type to factor data type
+data[, c("Disease", "Symptom_1", "Symptom_2", "Symptom_3", "Symptom_4", "Symptom_5", "Symptom_6", "Symptom_7", "Symptom_8")] <- lapply(data[, c("Disease", "Symptom_1", "Symptom_2", "Symptom_3", "Symptom_4", "Symptom_5", "Symptom_6", "Symptom_7", "Symptom_8")], as.factor)
+```
+Issue 4
+
+```{r pressure, echo=FALSE}
+# Load required libraries
+library(arules)
+library(arulesViz)
+library(RColorBrewer)
+
+# Create a transaction object
+trans <- as(data, "transactions")
+
+# Create an item frequency plot for the top 10 items
+itemFrequencyPlot(trans, topN = 10, type = "absolute",
+                  col = brewer.pal(8, "Pastel2"),
+                  main = "Absolute Item Frequency Plot",
+                  horiz = TRUE,
+                  mai = c(2, 2, 2, 2))
+
+itemFrequencyPlot(trans, topN = 10, type = "relative",
+                  col = brewer.pal(8, "Pastel2"),
+                  main = "Relative Item Frequency Plot",
+                  horiz = TRUE,
+                  mai = c(2, 2, 2, 2))
+
+```
+Issue 5
+
+```{r }
+# Load required libraries
+## plyr ----
+library(plyr)
+
+
+library(dplyr)
+
+library(caret)
+library(randomForest)  # You can choose another classification algorithm
+
+
+data <- read_csv("D:/Kaguash/Downloads/Symptom-Disease-ClassifierBI-Project/data/communicable_dataset.csv")
+
+# Remove unnecessary columns
+data <- data[, c("Disease", "Symptom_1", "Symptom_2", "Symptom_3", "Symptom_4", "Symptom_5", "Symptom_6", "Symptom_7", "Symptom_8")]
+
+# Convert character data type to factor data type
+data[, c("Disease", "Symptom_1", "Symptom_2", "Symptom_3", "Symptom_4", "Symptom_5", "Symptom_6", "Symptom_7", "Symptom_8")] <- lapply(data[, c("Disease", "Symptom_1", "Symptom_2", "Symptom_3", "Symptom_4", "Symptom_5", "Symptom_6", "Symptom_7", "Symptom_8")], as.factor)
+
+#Data transformation
+
+#confirmation of missing data
+sapply(data, function(x) sum(is.na(x)))
+
+# Summary of missing values
+summary(data)
+```
+Issue 6
+
+```{r }
+library(naniar)
+
+# Visualize missing data patterns
+gg_miss_var(data)
+gg_miss_upset(data)
+
+# Split the data into training and testing sets
+set.seed(123)
+trainIndex <- createDataPartition(data$Disease, p = .7, list = FALSE, times = 1)
+train <- data[trainIndex, ]
+test <- data[-trainIndex, ]
+
+# Train a decision tree model
+library(rpart)
+model_decision_tree <- rpart(Disease ~ ., data = train)
+
+# Remove rows with missing values
+train <- na.omit(train)
+# Impute missing values in 'train' dataset (using mean as an example)
+train$Disease <- ifelse(is.na(train$Disease), mean(train$Disease, na.rm = TRUE), train$Disease)
+# Build random forest model after handling missing values
+library(randomForest)
+# Train a random forest model on the training data
+model_decision_tree <- randomForest(Disease ~ ., data = train)
+
+# Use the trained model to make predictions on the test data
+#predictions <- predict(model, test)
+# Check levels of categorical variables in the training dataset
+sapply(train, function(x) if(is.factor(x)) levels(x))
+
+# Check levels of categorical variables in the test dataset
+sapply(test, function(x) if(is.factor(x)) levels(x))
+
+# Ensure factor levels in test match those in train
+for (col in names(train)) {
+  if (is.factor(train[[col]]) && is.factor(test[[col]])) {
+    levels(test[[col]]) <- levels(train[[col]])
+  }
+}
+
+#predictions <- predict(model, test)
+
+
+# Compare model performance using resampling methods
+library(caret)
+
+# Define control parameters for resampling
+control <- trainControl(method = "cv", number = 10)
+
+# Train a decision tree model using cross-validation
+model_cv <- train(Disease ~ ., data = train, method = "rpart", trControl = control)
+
+# Summarize model performance
+print(model_cv)
+```
+Issue 7 
+```{r }
+# Load necessary libraries
+library(caret)
+library(randomForest)
+
+# Define the grid of hyperparameters for mtry
+grid <- expand.grid(mtry = c(2, 4, 6, 8, 10)) # Vary the number of variables randomly sampled as candidates at each split
+
+# Set up the control parameters for grid search
+control <- trainControl(method = "cv", number = 5) 
+
+# Perform grid search for hyperparameters (only mtry)
+model_grid_search <- train(Disease ~ ., data = train, method = "rf",
+                           trControl = control, tuneGrid = grid)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
